@@ -110,7 +110,7 @@ fun LinkedSwitches() {
             ) {
                 Text("NEXT ROUND",
                     color = Color.White,
-                    fontSize = 22.sp)
+                    fontSize = 20.sp)
             }
         } else if (allSwitchesOn) {
             Text("YOU WIN",
@@ -135,7 +135,7 @@ fun OnBoardingScreen(
             OutlinedButton(
                 onClick = onContinueClicked
             ) {
-                Text("EFF AROUND AND FIND OUT", fontSize = 22.sp, color = Color.White)
+                Text("EFF AROUND AND FIND OUT", fontSize = 18.sp, color = Color.White)
             }
         }
     }
