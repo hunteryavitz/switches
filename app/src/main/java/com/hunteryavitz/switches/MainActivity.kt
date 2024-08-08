@@ -187,7 +187,7 @@ fun LinkedSwitches(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.fillMaxWidth()
         ) {
-            if (allSwitchesOn && switches.size < 5) {
+            if (allSwitchesOn && switches.size < 24) {
                 OutlinedButton(
                     onClick = {
                         nextRound()
@@ -197,7 +197,7 @@ fun LinkedSwitches(
                         color = Color.Yellow,
                         fontSize = 18.sp)
                 }
-            } else if (allSwitchesOn && switches.size == 5) {
+            } else if (allSwitchesOn && switches.size == 24) {
                 if (highScore == 0 || toggleCount < highScore) {
                     saveHighScore(toggleCount)
                 }
