@@ -1,14 +1,12 @@
 package com.hunteryavitz.switches
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.OutlinedButton
-import androidx.compose.material.Surface
-import androidx.compose.material.Switch
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -16,34 +14,42 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.hunteryavitz.switches.ui.theme.SwitchesTheme
 import kotlin.random.Random
+import com.hunteryavitz.switches.ui.theme.SwitchesTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             SwitchesTheme {
-                MainApp()
+                MainApp(this)
             }
         }
     }
 }
 
 @Composable
-fun MainApp() {
+fun MainApp(context: Context) {
+    val sharedPreferences = context.getSharedPreferences("switches", Context.MODE_PRIVATE)
+
+    fun getHighScore(): Int {
+        return sharedPreferences.getInt("high_score", 0)
+    }
+
+    val highScore = getHighScore()
     var shouldShowBoarding by rememberSaveable { mutableStateOf(true) }
 
     if (shouldShowBoarding) {
-        OnBoardingScreen(onContinueClicked = { shouldShowBoarding = false })
+        OnBoardingScreen(onContinueClicked = { shouldShowBoarding = false }, highScore = highScore)
     } else {
-        LinkedSwitches(onRestartClicked = { shouldShowBoarding = true })
+        LinkedSwitches(onRestartClicked = { shouldShowBoarding = true }, highScore = highScore, context)
     }
 }
 
 @Composable
 fun OnBoardingScreen(
     onContinueClicked: () -> Unit,
+    highScore: Int,
     modifier: Modifier = Modifier
 ) {
     Surface {
@@ -52,15 +58,24 @@ fun OnBoardingScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Switches", fontSize = 28.sp, modifier = Modifier.padding(bottom = 16.dp))
-             OutlinedButton(
+            Text("Switches",
+                fontSize = 28.sp,
+                modifier = Modifier.padding(bottom = 16.dp),
+                color = Color.LightGray)
+            OutlinedButton(
                 onClick = onContinueClicked,
             ) {
                 Text("EFF AROUND AND FIND OUT",
                     fontSize = 18.sp,
                     color = Color.Yellow,
                     modifier = Modifier.padding(16.dp)
-                 )
+                )
+            }
+            if (highScore > 0) {
+                Text("Best Score: $highScore",
+                    fontSize = 18.sp,
+                    color = Color.DarkGray,
+                    modifier = Modifier.padding(16.dp))
             }
         }
     }
@@ -68,8 +83,20 @@ fun OnBoardingScreen(
 
 @Composable
 fun LinkedSwitches(
-    onRestartClicked: () -> Unit
+    onRestartClicked: () -> Unit,
+    highScore: Int,
+    context: Context
 ) {
+    val sharedPreferences = context.getSharedPreferences("switches", Context.MODE_PRIVATE)
+    val editor = sharedPreferences.edit()
+
+    fun saveHighScore(score: Int) {
+        if (highScore == 0 || score in 1 until highScore) {
+            editor.putInt("high_score", score)
+            editor.apply()
+        }
+    }
+
     var round by remember { mutableStateOf(1) }
 
     fun generateRandomSwitches(size: Int): List<Boolean> {
@@ -97,7 +124,7 @@ fun LinkedSwitches(
     var switches by remember { mutableStateOf(generateRandomSwitches(3)) }
     var relationships by remember { mutableStateOf(establishRandomSwitchMap(switches.size)) }
     var toggleCount by remember { mutableStateOf(0) }
-    val allSwitchesOn = switches.all { it } // || switches.all { !it }
+    val allSwitchesOn = switches.all { it }
 
     fun nextRound() {
         round++
@@ -113,11 +140,18 @@ fun LinkedSwitches(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text("Switches",
-            color = Color.White,
+            color = Color.LightGray,
             fontSize = 32.sp,
             modifier = Modifier.padding(bottom = 16.dp))
 
         val rows = (switches.size + 2) / 3
+
+        val switchColors = SwitchDefaults.colors(
+            checkedThumbColor = Color.Yellow,
+            checkedTrackColor = Color.LightGray,
+            uncheckedThumbColor = Color.Black,
+            uncheckedTrackColor = Color.Gray
+        )
 
         for (rowIndex in 0 until rows) {
             Row(
@@ -133,12 +167,14 @@ fun LinkedSwitches(
                                 val newSwitches = switches.toMutableList()
                                 newSwitches[switchIndex] = it
 
-                                val randomIndex = relationships[switchIndex] ?: switchIndex // (0 until newSwitches.size).filter { it != switchIndex}.random()
+                                val randomIndex = relationships[switchIndex] ?: switchIndex
                                 newSwitches[randomIndex] = !newSwitches[randomIndex]
 
                                 switches = newSwitches
                                 toggleCount++
-                            }
+                            },
+                            modifier = Modifier.padding(8.dp),
+                            colors = switchColors
                         )
                     }
                 }
@@ -146,12 +182,12 @@ fun LinkedSwitches(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.padding(32.dp))
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.fillMaxWidth()
         ) {
-            if (allSwitchesOn && switches.size < 24) {
+            if (allSwitchesOn && switches.size < 5) {
                 OutlinedButton(
                     onClick = {
                         nextRound()
@@ -161,13 +197,21 @@ fun LinkedSwitches(
                         color = Color.Yellow,
                         fontSize = 18.sp)
                 }
-            } else if (allSwitchesOn && switches.size == 24) {
+            } else if (allSwitchesOn && switches.size == 5) {
+                if (highScore == 0 || toggleCount < highScore) {
+                    saveHighScore(toggleCount)
+                }
                 Text("YOU WIN",
-                    color = Color.White,
+                    color = Color.Yellow,
                     fontSize = 22.sp)
+                if ((highScore == 0) || (toggleCount < highScore)) {
+                    Text("NEW BEST SCORE",
+                        color = Color.LightGray,
+                        fontSize = 16.sp)
+                }
                 Text("Total Moves: $toggleCount",
-                    color = Color.White,
-                    fontSize = 22.sp,
+                    color = Color.DarkGray,
+                    fontSize = 18.sp,
                     modifier = Modifier.padding(24.dp))
                 OutlinedButton(
                     onClick = {
